@@ -1,0 +1,55 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "vocagacha-8e17c",
+          "appId": "1:417803462333:android:5a3de1ccc37f7d1acef9d4",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "vocagacha-8e17c",
+          "configurations": {
+            "android": "1:417803462333:android:5a3de1ccc37f7d1acef9d4",
+            "ios": "1:417803462333:ios:da2e098f87336863cef9d4",
+            "macos": "1:417803462333:ios:da2e098f87336863cef9d4",
+            "web": "1:417803462333:web:fb7e6585c1eab7d1cef9d4",
+            "windows": "1:417803462333:web:04667c7281f8ce4bcef9d4"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint",
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
+    }
+  ],
+  "firestore": {
+    "database": "(default)",
+    "location": "asia-northeast3",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "emulators": {
+    "functions": { "port": 5001 },
+    "firestore": { "port": 8080 },
+    "pubsub": { "port": 8085 },  
+    "ui": { "enabled": true, "port": 4000 }
+  }
+}
