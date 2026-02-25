@@ -1,17 +1,37 @@
-# vocagacha
+# 개요
 
-A new Flutter project.
+프로젝트명: 보카차
+Vocabulary + Gacha
 
-## Getting Started
+1. 프로젝트 핵심 컨셉  
+   단순히 단어를 외우는 지루한 방식에서 벗어나, 게임의 '가챠(뽑기)' 시스템을 접목한 영어 단어 학습 애플리케이션입니다. 사용자는 토큰을 소비해 랜덤하게 단어를 획득하고, 획득한 단어의 등급에 따라 수집의 재미를 느낄 수 있습니다.
 
-This project is a starting point for a Flutter application.
+2. 주요 기능 및 로직
+   - AI 기반 단어 생성(앱과 별개):
+     - Google Gemini AI를 사용하여 난이도별 단어를(B~SSS) 자동 생성합니다.
 
-A few resources to get you started if this is your first Flutter project:
+   - 등급형 가챠 시스템:
+     - 사용자가 토큰을 사용하면 Firestore DB에서 실시간으로 단어를 하나 뽑아 인벤토리에 저장합니다.
+     - 토큰을 많이 소모할수록 높은 등급의 단어를 뽑을 확률이 증가하는 시스템을 구현합니다.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+   - 토큰 획득 시스템:
+     - 토큰은 예문 작성, 퀴즈 풀이 등 다양한 활동을 통해 획득할 수 있습니다.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+3. 기술 스택
+   - Frontend : Flutter (Dart)
+   - Backend : Firebase (Firestore)
+   - AI : Google Gemini API
+   - Language : TypeScript (Backend Script), Dart (App)
+
+4. 앱 특화 구현 요소
+   - 진동 : 단어를 뽑을 때마다 진동이 울려 사용자에게 피드백을 제공합니다.
+   - 애니메이션 : 단어 뽑기 시 등급에 따라 다양한 애니메이션 효과를 적용하여 시각적 즐거움을 제공합니다.
+   - 알림 : 단어 획득 시 푸시 알림을 통해 사용자에게 새로운 단어를 알려줍니다.
+   - 흔들기 : 단어 뽑기 시 기기를 흔들어 사용자에게 몰입감을 제공합니다.
+
+5. 개발을 통해 얻고자 하는 것
+   - flutter 개발 및 앱 배포 경험
+   - firebase와의 연동 경험
+   - AI와의 연동 경험
+   - 앱 개발의 전반적인 과정에 대한 이해
+   - 사용자 경험을 고려한 UI/UX 디자인 능력 향상
