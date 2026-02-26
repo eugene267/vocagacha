@@ -91,14 +91,17 @@ class _VocachaTestState extends State<VocachaTest> {
     final wordRef = userRef.collection('inventory').doc(docId);
 
     await firestore.runTransaction((transaction) async {
+      final userSnap = await transaction.get(userRef);
       final wordSnap = await transaction.get(wordRef);
-      if (wordSnap.get('isMemorized') == true) return; // 이미 받은 경우 제외
+      bool isMemorized = wordSnap.get('isMemorized') ?? false;
+      int currentTokens = userSnap.get('tokens');
+
+      if (isMemorized) return; // 이미 받은 경우 제외
 
       // 1. 단어 상태를 '암기 완료'로 변경
       transaction.update(wordRef, {'isMemorized': true});
       // 2. 보상으로 토큰 1개 지급
-      final userSnap = await transaction.get(userRef);
-      transaction.update(userRef, {'tokens': userSnap.get('tokens') + 1});
+      transaction.update(userRef, {'tokens': currentTokens + 1});
     });
 
     if (mounted) {
