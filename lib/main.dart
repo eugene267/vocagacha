@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Firestore 추가
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'firebase_options.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -22,7 +22,7 @@ class VocachaTest extends StatefulWidget {
 }
 
 class _VocachaTestState extends State<VocachaTest> {
-  final String _testUid = "test_user_01"; // 테스트용 고정 UID
+  final String _testUid = "test_user_01";
   int _tokens = 0;
   bool _isLoading = false;
 
@@ -32,75 +32,51 @@ class _VocachaTestState extends State<VocachaTest> {
     _initializeUser();
   }
 
-  // 1. 유저 초기화 및 토큰 실시간 리스너
   Future<void> _initializeUser() async {
     final userRef = FirebaseFirestore.instance
         .collection('users')
         .doc(_testUid);
     final doc = await userRef.get();
-
     if (!doc.exists) {
-      // 신규 유저일 경우 10토큰 지급
       await userRef.set({'tokens': 10});
     }
-
-    // 토큰 변화 실시간 감시
     userRef.snapshots().listen((snapshot) {
       if (snapshot.exists && mounted) {
-        setState(() {
-          _tokens = snapshot.data()?['tokens'] ?? 0;
-        });
+        setState(() => _tokens = snapshot.data()?['tokens'] ?? 0);
       }
     });
   }
 
-  // 2. 가챠 핵심 엔진 (랜덤 추출 + 트랜잭션)
+  // --- 가챠 로직 ---
   void _onGachaPressed() async {
     if (_tokens <= 0) return;
-
     setState(() => _isLoading = true);
 
     try {
       final firestore = FirebaseFirestore.instance;
-
-      // (1) 전체 단어 목록 가져오기
       final allWordsSnapshot = await firestore.collection('all_words').get();
       if (allWordsSnapshot.docs.isEmpty) throw "DB에 단어가 없습니다.";
 
-      // (2) 클라이언트 측 랜덤 선택
       final randomDoc = (allWordsSnapshot.docs..shuffle()).first;
       final wordData = randomDoc.data();
 
-      // (3) 트랜잭션: 토큰 차감 및 인벤토리 저장
       await firestore.runTransaction((transaction) async {
         final userRef = firestore.collection('users').doc(_testUid);
         final userSnap = await transaction.get(userRef);
-
         int currentTokens = userSnap.get('tokens');
-        if (currentTokens > 0) {
-          // 토큰 1개 차감
-          transaction.update(userRef, {'tokens': currentTokens - 1});
 
-          // 유저 인벤토리에 추가
+        if (currentTokens > 0) {
+          transaction.update(userRef, {'tokens': currentTokens - 1});
           final inventoryRef = userRef.collection('inventory').doc();
           transaction.set(inventoryRef, {
-            'word': wordData['word'],
-            'mean': wordData['mean'],
-            'grade': wordData['grade'],
+            ...wordData,
             'isMemorized': false,
             'pickedAt': FieldValue.serverTimestamp(),
           });
         }
       });
 
-      // (4) 결과 팝업 띄우기
-      if (mounted) {
-        _showResultDialog(
-          wordData['word'],
-          wordData['mean'],
-          wordData['grade'],
-        );
-      }
+      _showResultDialog(wordData['word'], wordData['mean'], wordData['grade']);
     } catch (e) {
       print("❌ 가챠 실패: $e");
     } finally {
@@ -108,22 +84,36 @@ class _VocachaTestState extends State<VocachaTest> {
     }
   }
 
-  // 3. 결과 알림창
+  // --- 암기 완료 보상 로직 ---
+  Future<void> _claimReward(String docId) async {
+    final firestore = FirebaseFirestore.instance;
+    final userRef = firestore.collection('users').doc(_testUid);
+    final wordRef = userRef.collection('inventory').doc(docId);
+
+    await firestore.runTransaction((transaction) async {
+      final wordSnap = await transaction.get(wordRef);
+      if (wordSnap.get('isMemorized') == true) return; // 이미 받은 경우 제외
+
+      // 1. 단어 상태를 '암기 완료'로 변경
+      transaction.update(wordRef, {'isMemorized': true});
+      // 2. 보상으로 토큰 1개 지급
+      final userSnap = await transaction.get(userRef);
+      transaction.update(userRef, {'tokens': userSnap.get('tokens') + 1});
+    });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("🎉 암기 완료! 보상으로 1코인을 얻었습니다.")),
+      );
+    }
+  }
+
   void _showResultDialog(String word, String mean, String grade) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text("🎉 $grade 등급 획득!"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              word,
-              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-            ),
-            Text(mean, style: const TextStyle(fontSize: 18)),
-          ],
-        ),
+        content: Text("$word: $mean"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -136,42 +126,84 @@ class _VocachaTestState extends State<VocachaTest> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('보카차(Vocacha)'),
-        backgroundColor: Colors.amber,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Vocacha'),
+          backgroundColor: Colors.amber,
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: "가챠", icon: Icon(Icons.casino)),
+              Tab(text: "인벤토리", icon: Icon(Icons.inventory)),
+            ],
+          ),
+        ),
+        body: TabBarView(
           children: [
-            const Text("보유 토큰", style: TextStyle(fontSize: 16)),
-            Text(
-              "$_tokens",
-              style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 40),
-            _isLoading
-                ? const CircularProgressIndicator()
-                : ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 40,
-                        vertical: 20,
-                      ),
-                      backgroundColor: Colors.amber,
-                    ),
-                    onPressed: _tokens > 0 ? _onGachaPressed : null,
-                    child: const Text(
-                      '가챠 돌리기 (1코인)',
-                      style: TextStyle(fontSize: 20, color: Colors.black),
+            // 1번 탭: 가챠 화면
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text("보유 토큰", style: TextStyle(fontSize: 16)),
+                  Text(
+                    "$_tokens",
+                    style: const TextStyle(
+                      fontSize: 48,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-            if (_tokens == 0 && !_isLoading)
-              const Padding(
-                padding: EdgeInsets.only(top: 20),
-                child: Text("토큰이 부족합니다!", style: TextStyle(color: Colors.red)),
+                  const SizedBox(height: 40),
+                  _isLoading
+                      ? const CircularProgressIndicator()
+                      : ElevatedButton(
+                          onPressed: _tokens > 0 ? _onGachaPressed : null,
+                          child: const Text('가챠 돌리기 (1코인)'),
+                        ),
+                ],
               ),
+            ),
+            // 2번 탭: 인벤토리 리스트
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(_testUid)
+                  .collection('inventory')
+                  .orderBy('pickedAt', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final docs = snapshot.data!.docs;
+                return ListView.builder(
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) {
+                    final data = docs[index].data() as Map<String, dynamic>;
+                    final bool isMemorized = data['isMemorized'] ?? false;
+                    return ListTile(
+                      leading: CircleAvatar(child: Text(data['grade'])),
+                      title: Text(
+                        data['word'],
+                        style: TextStyle(
+                          decoration: isMemorized
+                              ? TextDecoration.lineThrough
+                              : null,
+                        ),
+                      ),
+                      subtitle: Text(data['mean']),
+                      trailing: isMemorized
+                          ? const Icon(Icons.check_circle, color: Colors.green)
+                          : ElevatedButton(
+                              onPressed: () => _claimReward(docs[index].id),
+                              child: const Text("암기!"),
+                            ),
+                    );
+                  },
+                );
+              },
+            ),
           ],
         ),
       ),
