@@ -54,41 +54,12 @@ class _VocachaTestState extends State<VocachaTest> {
 
     try {
       final firestore = FirebaseFirestore.instance;
-
-      // 1. 내 인벤토리의 단어 리스트 가져오기 (중복 체크용)
-      final inventorySnapshot = await firestore
-          .collection('users')
-          .doc(_testUid)
-          .collection('inventory')
-          .get();
-      final List<String> myWords = inventorySnapshot.docs
-          .map((doc) => doc.get('word') as String)
-          .toList();
-
-      // 2. 전체 단어 목록 가져오기
       final allWordsSnapshot = await firestore.collection('all_words').get();
+      if (allWordsSnapshot.docs.isEmpty) throw "DB에 단어가 없습니다.";
 
-      // 3. 중복되지 않은 단어들만 필터링 (차집합)
-      final availableWords = allWordsSnapshot.docs.where((doc) {
-        return !myWords.contains(doc.get('word'));
-      }).toList();
-
-      if (availableWords.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("🎊 모든 단어를 수집하셨습니다! 더 이상 뽑을 단어가 없어요."),
-            ),
-          );
-        }
-        return;
-      }
-
-      // 4. 필터링된 후보군 중에서 랜덤 선택
-      final randomDoc = (availableWords..shuffle()).first;
+      final randomDoc = (allWordsSnapshot.docs..shuffle()).first;
       final wordData = randomDoc.data();
 
-      // 5. 트랜잭션 실행 (토큰 차감 + 인벤토리 저장)
       await firestore.runTransaction((transaction) async {
         final userRef = firestore.collection('users').doc(_testUid);
         final userSnap = await transaction.get(userRef);
