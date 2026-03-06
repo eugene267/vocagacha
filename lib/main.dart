@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'firebase_options.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'firebase_options.dart';
+import 'screens/home_screen.dart';
+import 'screens/inventory_screen.dart';
+import 'services/db_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,138 +25,25 @@ class VocachaTest extends StatefulWidget {
 
 class _VocachaTestState extends State<VocachaTest> {
   final String _testUid = "test_user_01";
+  final DbService _dbService = DbService();
   int _tokens = 0;
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _initializeUser();
+    _initialize();
   }
 
-  Future<void> _initializeUser() async {
-    final userRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(_testUid);
-    final doc = await userRef.get();
-    if (!doc.exists) {
-      await userRef.set({'tokens': 10});
-    }
-    userRef.snapshots().listen((snapshot) {
-      if (snapshot.exists && mounted) {
-        setState(() => _tokens = snapshot.data()?['tokens'] ?? 0);
-      }
+  Future<void> _initialize() async {
+    await _dbService.initializeUser(_testUid);
+    _dbService.getUserTokensStream(_testUid).listen((tokens) {
+      if (mounted) setState(() => _tokens = tokens);
     });
   }
 
-  // --- 가챠 로직 ---
-  void _onGachaPressed() async {
-    if (_tokens <= 0) return;
-    setState(() => _isLoading = true);
-
-    try {
-      final firestore = FirebaseFirestore.instance;
-
-      // 1. 내 인벤토리의 단어 리스트 가져오기 (중복 체크용)
-      final inventorySnapshot = await firestore
-          .collection('users')
-          .doc(_testUid)
-          .collection('inventory')
-          .get();
-      final List<String> myWords = inventorySnapshot.docs
-          .map((doc) => doc.get('word') as String)
-          .toList();
-
-      // 2. 전체 단어 목록 가져오기
-      final allWordsSnapshot = await firestore.collection('all_words').get();
-
-      // 3. 중복되지 않은 단어들만 필터링 (차집합)
-      final availableWords = allWordsSnapshot.docs.where((doc) {
-        return !myWords.contains(doc.get('word'));
-      }).toList();
-
-      if (availableWords.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("🎊 모든 단어를 수집하셨습니다! 더 이상 뽑을 단어가 없어요."),
-            ),
-          );
-        }
-        return;
-      }
-
-      // 4. 필터링된 후보군 중에서 랜덤 선택
-      final randomDoc = (availableWords..shuffle()).first;
-      final wordData = randomDoc.data();
-
-      // 5. 트랜잭션 실행 (토큰 차감 + 인벤토리 저장)
-      await firestore.runTransaction((transaction) async {
-        final userRef = firestore.collection('users').doc(_testUid);
-        final userSnap = await transaction.get(userRef);
-        int currentTokens = userSnap.get('tokens');
-
-        if (currentTokens > 0) {
-          transaction.update(userRef, {'tokens': currentTokens - 1});
-          final inventoryRef = userRef.collection('inventory').doc();
-          transaction.set(inventoryRef, {
-            ...wordData,
-            'isMemorized': false,
-            'pickedAt': FieldValue.serverTimestamp(),
-          });
-        }
-      });
-
-      _showResultDialog(wordData['word'], wordData['mean'], wordData['grade']);
-    } catch (e) {
-      print("❌ 가챠 실패: $e");
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  // --- 암기 완료 보상 로직 ---
-  Future<void> _claimReward(String docId) async {
-    final firestore = FirebaseFirestore.instance;
-    final userRef = firestore.collection('users').doc(_testUid);
-    final wordRef = userRef.collection('inventory').doc(docId);
-
-    await firestore.runTransaction((transaction) async {
-      final userSnap = await transaction.get(userRef);
-      final wordSnap = await transaction.get(wordRef);
-      bool isMemorized = wordSnap.get('isMemorized') ?? false;
-      int currentTokens = userSnap.get('tokens');
-
-      if (isMemorized) return; // 이미 받은 경우 제외
-
-      // 1. 단어 상태를 '암기 완료'로 변경
-      transaction.update(wordRef, {'isMemorized': true});
-      // 2. 보상으로 토큰 1개 지급
-      transaction.update(userRef, {'tokens': currentTokens + 1});
-    });
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("🎉 암기 완료! 보상으로 1코인을 얻었습니다.")),
-      );
-    }
-  }
-
-  void _showResultDialog(String word, String mean, String grade) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text("🎉 $grade 등급 획득!"),
-        content: Text("$word: $mean"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("확인"),
-          ),
-        ],
-      ),
-    );
-  }
+  void _onLoadingStart() => setState(() => _isLoading = true);
+  void _onLoadingEnd() => setState(() => _isLoading = false);
 
   @override
   Widget build(BuildContext context) {
@@ -173,68 +62,17 @@ class _VocachaTestState extends State<VocachaTest> {
         ),
         body: TabBarView(
           children: [
-            // 1번 탭: 가챠 화면
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text("보유 토큰", style: TextStyle(fontSize: 16)),
-                  Text(
-                    "$_tokens",
-                    style: const TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                  _isLoading
-                      ? const CircularProgressIndicator()
-                      : ElevatedButton(
-                          onPressed: _tokens > 0 ? _onGachaPressed : null,
-                          child: const Text('가챠 돌리기 (1코인)'),
-                        ),
-                ],
-              ),
+            HomeScreen(
+              testUid: _testUid,
+              dbService: _dbService,
+              tokens: _tokens,
+              onLoadingStart: _onLoadingStart,
+              onLoadingEnd: _onLoadingEnd,
+              isLoading: _isLoading,
             ),
-            // 2번 탭: 인벤토리 리스트
-            StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(_testUid)
-                  .collection('inventory')
-                  .orderBy('pickedAt', descending: true)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final docs = snapshot.data!.docs;
-                return ListView.builder(
-                  itemCount: docs.length,
-                  itemBuilder: (context, index) {
-                    final data = docs[index].data() as Map<String, dynamic>;
-                    final bool isMemorized = data['isMemorized'] ?? false;
-                    return ListTile(
-                      leading: CircleAvatar(child: Text(data['grade'])),
-                      title: Text(
-                        data['word'],
-                        style: TextStyle(
-                          decoration: isMemorized
-                              ? TextDecoration.lineThrough
-                              : null,
-                        ),
-                      ),
-                      subtitle: Text(data['mean']),
-                      trailing: isMemorized
-                          ? const Icon(Icons.check_circle, color: Colors.green)
-                          : ElevatedButton(
-                              onPressed: () => _claimReward(docs[index].id),
-                              child: const Text("암기!"),
-                            ),
-                    );
-                  },
-                );
-              },
+            InventoryScreen(
+              testUid: _testUid,
+              dbService: _dbService,
             ),
           ],
         ),
