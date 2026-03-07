@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/db_service.dart';
 
 class HomeScreen extends StatefulWidget {
-  final String testUid;
+  final String uid;
   final DbService dbService;
   final int tokens;
   final VoidCallback onLoadingStart;
@@ -11,7 +11,7 @@ class HomeScreen extends StatefulWidget {
 
   const HomeScreen({
     super.key,
-    required this.testUid,
+    required this.uid,
     required this.dbService,
     required this.tokens,
     required this.onLoadingStart,
@@ -29,15 +29,13 @@ class _HomeScreenState extends State<HomeScreen> {
     widget.onLoadingStart();
 
     try {
-      final result = await widget.dbService.performGacha(widget.testUid);
-      
+      final result = await widget.dbService.performGacha(widget.uid);
+
       if (!mounted) return;
 
       if (result == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("🎊 모든 단어를 수집하셨습니다! 더 이상 뽑을 단어가 없어요."),
-          ),
+          const SnackBar(content: Text("🎊 모든 단어를 수집하셨습니다! 더 이상 뽑을 단어가 없어요.")),
         );
       } else {
         _showResultDialog(result.word, result.mean, result.grade);
@@ -74,10 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const Text("보유 토큰", style: TextStyle(fontSize: 16)),
           Text(
             "${widget.tokens}",
-            style: const TextStyle(
-              fontSize: 48,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 40),
           widget.isLoading

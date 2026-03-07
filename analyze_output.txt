@@ -1,0 +1,12 @@
+Analyzing vocagacha...                                          
+
+  error - The class 'GoogleSignIn' doesn't have an unnamed constructor - lib\services\auth_service.dart:6:38 - new_with_undefined_constructor_default
+  error - The method 'signIn' isn't defined for the type 'GoogleSignIn' - lib\services\auth_service.dart:18:67 - undefined_method
+   info - Uses 'await' on an instance of 'GoogleSignInAuthentication', which is not a subtype of 'Future' - lib\services\auth_service.dart:23:11 - await_only_futures
+  error - The getter 'accessToken' isn't defined for the type 'GoogleSignInAuthentication' - lib\services\auth_service.dart:27:33 - undefined_getter
+   info - Don't invoke 'print' in production code - lib\services\auth_service.dart:34:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\db_service.dart:62:38 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\db_service.dart:133:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\db_service.dart:193:38 - avoid_print
+   info - Don't invoke 'print' in production code - lib\services\db_service.dart:212:7 - avoid_print
+

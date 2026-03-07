@@ -12,7 +12,20 @@
           "package_name": "com.example.vocagacha"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "417803462333-ia6mpo9q9iokgq71n7p0qfq81odru37h.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.vocagacha",
+            "certificate_hash": "cbdce07d5c9e43fb74ee569ca3a921b9690af9af"
+          }
+        },
+        {
+          "client_id": "417803462333-tr1ei9g4nl9p2fpnd9nhiiofvijav441.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyB-3sUg0DTTYJlL0w9mAiwg9O2wWl2681c"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "417803462333-tr1ei9g4nl9p2fpnd9nhiiofvijav441.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "417803462333-gpci8ib7upsbtjcrq42pchusr1f3rbe7.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.vocagacha"
+              }
+            }
+          ]
         }
       }
     }

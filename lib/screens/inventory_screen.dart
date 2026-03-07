@@ -4,14 +4,14 @@ import '../services/db_service.dart';
 import '../gemini_service.dart';
 
 class InventoryScreen extends StatelessWidget {
-  final String testUid;
+  final String uid;
   final DbService dbService;
   final GeminiService _geminiService = GeminiService();
 
-  InventoryScreen({super.key, required this.testUid, required this.dbService});
+  InventoryScreen({super.key, required this.uid, required this.dbService});
 
   void _claimReward(BuildContext context, String docId) async {
-    final success = await dbService.claimReward(testUid, docId);
+    final success = await dbService.claimReward(uid, docId);
     if (success && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("🎉 암기 완료! 보상으로 1코인을 얻었습니다.")),
@@ -20,7 +20,7 @@ class InventoryScreen extends StatelessWidget {
   }
 
   void _startRandomMemorization(BuildContext context) async {
-    final word = await dbService.getRandomUnmemorizedWord(testUid);
+    final word = await dbService.getRandomUnmemorizedWord(uid);
     if (!context.mounted) return;
 
     if (word == null) {
@@ -158,7 +158,7 @@ class InventoryScreen extends StatelessWidget {
         ),
         Expanded(
           child: StreamBuilder<List<WordResult>>(
-            stream: dbService.getInventoryStream(testUid),
+            stream: dbService.getInventoryStream(uid),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
