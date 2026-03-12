@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../services/db_service.dart';
+import '../widgets/gacha_animation_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String uid;
@@ -38,7 +40,8 @@ class _HomeScreenState extends State<HomeScreen> {
           const SnackBar(content: Text("🎊 모든 단어를 수집하셨습니다! 더 이상 뽑을 단어가 없어요.")),
         );
       } else {
-        _showResultDialog(result.word, result.mean, result.grade);
+        HapticFeedback.heavyImpact();
+        _showResultAnimation(result.word, result.mean, result.grade);
       }
     } catch (e) {
       // 에러 처리는 DbService 로깅에 의존하거나 별도 알림
@@ -47,18 +50,14 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _showResultDialog(String word, String mean, String grade) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text("🎉 $grade 등급 획득!"),
-        content: Text("$word: $mean"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("확인"),
-          ),
-        ],
+  void _showResultAnimation(String word, String mean, String grade) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false, // 팝업처럼 배경이 보이게
+        barrierDismissible: true,
+        transitionDuration: Duration.zero, // GachaAnimationScreen 내부에서 애니메이션 처리
+        pageBuilder: (context, _, _) =>
+            GachaAnimationScreen(word: word, mean: mean, grade: grade),
       ),
     );
   }
